@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  Crown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/telegram", label: "Telegram", icon: Send },
   { href: "/dashboard/settings", label: "API Keys", icon: Settings },
+  { href: "/dashboard/plan", label: "Mi Plan", icon: Crown },
 ];
 
 export default function DashboardLayout({

@@ -221,12 +221,13 @@ export default function LandingPage() {
               Empieza gratis. Escala cuando lo necesites.
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="mx-auto grid max-w-3xl gap-8 md:grid-cols-2">
             <PricingCard
-              name="Starter"
+              name="Freemium"
               price="Gratis"
-              description="Para probar y aprender"
+              description="7 dias de prueba con todo incluido"
               features={[
+                "7 dias gratis con funciones Pro",
                 "1 agente activo",
                 "1 canal (Telegram o WhatsApp)",
                 "100 mensajes/dia",
@@ -236,33 +237,24 @@ export default function LandingPage() {
             />
             <PricingCard
               name="Pro"
-              price="$19"
+              price="$15.000"
               description="Para negocios en crecimiento"
-              features={[
-                "5 agentes activos",
-                "Canales ilimitados",
-                "Mensajes ilimitados",
-                "Cron jobs y webhooks",
-                "Memory & RAG",
-                "Soporte prioritario",
-              ]}
-              highlighted
-            />
-            <PricingCard
-              name="Enterprise"
-              price="$49"
-              description="Para equipos y agencias"
               features={[
                 "Agentes ilimitados",
                 "Canales ilimitados",
                 "Mensajes ilimitados",
+                "Cron jobs y webhooks",
+                "Memory & RAG",
                 "Browser automation",
                 "Custom skills",
-                "Deploy dedicado",
-                "SLA garantizado",
+                "Soporte prioritario",
               ]}
+              highlighted
             />
           </div>
+          <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+            Precios en pesos argentinos (ARS). Pago seguro con Mercado Pago.
+          </p>
         </div>
       </section>
 
