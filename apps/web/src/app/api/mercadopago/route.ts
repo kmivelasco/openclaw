@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const MP_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3333";
 
 /**
@@ -16,6 +15,7 @@ export async function POST(req: NextRequest) {
       externalReference: string;
     };
 
+    const MP_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
     if (!MP_ACCESS_TOKEN) {
       return NextResponse.json(
         { error: "Mercado Pago no esta configurado" },

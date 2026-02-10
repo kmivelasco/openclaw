@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {return null;}
+  return createClient(url, key);
+}
 
 /**
  * Mercado Pago webhook handler for subscription status changes.
@@ -12,6 +14,12 @@ const supabaseAdmin = createClient(
  */
 export async function POST(req: NextRequest) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      console.error("Webhook: missing Supabase service role key");
+      return NextResponse.json({ ok: true });
+    }
+
     const body = await req.json();
 
     // MP sends notifications with type and data
@@ -22,11 +30,17 @@ export async function POST(req: NextRequest) {
       }
 
       // Fetch subscription details from MP
+      const mpToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      if (!mpToken) {
+        console.error("Webhook: missing MP access token");
+        return NextResponse.json({ ok: true });
+      }
+
       const res = await fetch(
         `https://api.mercadopago.com/preapproval/${subscriptionId}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${mpToken}`,
           },
         },
       );
