@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase";
 export default function TelegramPage() {
   const supabase = createClient();
   const [botToken, setBotToken] = useState("");
-  const [savedToken, setSavedToken] = useState<string | null>(null);
+  const [_savedToken, setSavedToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
