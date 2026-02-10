@@ -81,3 +81,9 @@ USER.md
 .agent/*.json
 !.agent/workflows/
 local/
+
+# Next.js (apps/web)
+apps/web/.next/
+apps/web/out/
+.env.local
+.env*.local
