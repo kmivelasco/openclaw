@@ -12,8 +12,18 @@ import {
   Zap,
   MessageSquare,
   Bot,
+  Crown,
+  Sparkles,
+  ArrowRight,
+  X,
+  Shield,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+
+type Subscription = {
+  plan: string;
+  status: string;
+} | null;
 
 export default function TelegramPage() {
   const supabase = createClient();
@@ -24,6 +34,9 @@ export default function TelegramPage() {
   const [copied, setCopied] = useState(false);
   const [webhookActive, setWebhookActive] = useState(false);
   const [activatingWebhook, setActivatingWebhook] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscription, setSubscription] = useState<Subscription>(null);
   const [status, setStatus] = useState<
     "disconnected" | "connecting" | "connected" | "error"
   >("disconnected");
@@ -33,29 +46,42 @@ export default function TelegramPage() {
   } | null>(null);
 
   useEffect(() => {
-    loadToken();
+    loadData();
   }, []);
 
-  async function loadToken() {
+  async function loadData() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {return;}
 
-    const { data } = await supabase
+    // Load telegram config
+    const { data: tgData } = await supabase
       .from("telegram_config")
       .select("bot_token, bot_username, status, webhook_active")
       .eq("user_id", user.id)
       .single();
 
-    if (data) {
-      setSavedToken(data.bot_token);
-      setStatus(data.status || "disconnected");
-      setWebhookActive(data.webhook_active || false);
-      if (data.bot_username) {
-        setBotInfo({ username: data.bot_username });
+    if (tgData) {
+      setSavedToken(tgData.bot_token);
+      setStatus(tgData.status || "disconnected");
+      setWebhookActive(tgData.webhook_active || false);
+      if (tgData.bot_username) {
+        setBotInfo({ username: tgData.bot_username });
       }
     }
+
+    // Load subscription
+    const { data: subData } = await supabase
+      .from("subscriptions")
+      .select("plan, status")
+      .eq("user_id", user.id)
+      .single();
+
+    if (subData) {
+      setSubscription(subData);
+    }
+
     setLoading(false);
   }
 
@@ -104,6 +130,12 @@ export default function TelegramPage() {
 
       // Auto-activate webhook
       await activateWebhook(botToken.trim());
+
+      // Show subscription modal if not subscribed
+      const isSubscribed = subscription?.plan === "pro" && subscription?.status === "active";
+      if (!isSubscribed) {
+        setShowSubscriptionModal(true);
+      }
     } catch {
       setStatus("error");
     }
@@ -172,7 +204,6 @@ export default function TelegramPage() {
 
   async function disconnect() {
     if (savedToken) {
-      // Remove webhook first
       await fetch("/api/telegram/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,6 +229,39 @@ export default function TelegramPage() {
       navigator.clipboard.writeText(`https://t.me/${botInfo.username}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  async function handleSubscribe(plan: "trial" | "pro") {
+    setSubscribing(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {return;}
+
+    try {
+      const res = await fetch("/api/mercadopago", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          payerEmail: user.email,
+          externalReference: user.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert(data.error || "Error al crear suscripcion");
+        setSubscribing(false);
+      }
+    } catch {
+      alert("Error de conexion");
+      setSubscribing(false);
     }
   }
 
@@ -475,6 +539,113 @@ export default function TelegramPage() {
               >
                 Desconectar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Modal */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-lg rounded-3xl border border-[var(--border-accent)] bg-[var(--bg-primary)] p-8 shadow-2xl">
+            {/* Close button */}
+            <button
+              onClick={() => setShowSubscriptionModal(false)}
+              className="absolute right-4 top-4 rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-glow)]">
+                <Crown className="h-8 w-8 text-[var(--accent-primary)]" />
+              </div>
+              <h2 className="text-2xl font-bold">
+                Tu bot esta <span className="gradient-text">listo!</span>
+              </h2>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                @{botInfo?.username} ya esta conectado. Activa tu plan para que
+                empiece a responder con IA.
+              </p>
+            </div>
+
+            {/* Plan Card */}
+            <div className="mb-6 rounded-2xl border border-[var(--border-accent)] bg-[var(--bg-card)] p-6 glow-border">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">Plan Freemium</h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    7 dias gratis con todas las funciones Pro
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold gradient-text">Gratis</span>
+                  <p className="text-xs text-[var(--text-muted)]">por 7 dias</p>
+                </div>
+              </div>
+
+              <ul className="mb-6 space-y-2.5">
+                {[
+                  "Agente IA respondiendo en Telegram 24/7",
+                  "Chat web con tu agente incluido",
+                  "Personalidad configurable (SOUL.md)",
+                  "100 mensajes/dia",
+                  "Trae tu propia API key",
+                ].map((f) => (
+                  <li
+                    key={f}
+                    className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent-primary)]" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handleSubscribe("trial")}
+                disabled={subscribing}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3.5 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)] hover:shadow-lg hover:shadow-[var(--accent-glow)] disabled:opacity-50"
+              >
+                {subscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Activar 7 dias gratis
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Pro upgrade hint */}
+            <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Crown className="h-5 w-5 text-[var(--accent-primary)]" />
+                  <div>
+                    <p className="text-sm font-medium">Plan Pro</p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Ilimitado: agentes, canales, mensajes
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleSubscribe("pro")}
+                  disabled={subscribing}
+                  className="rounded-lg border border-[var(--accent-primary)]/30 px-4 py-2 text-xs font-medium text-[var(--accent-primary)] transition-all hover:bg-[var(--accent-primary)]/10"
+                >
+                  $15.000/mes
+                </button>
+              </div>
+            </div>
+
+            {/* Security note */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
+              <Shield className="h-3.5 w-3.5" />
+              Pago seguro con Mercado Pago. Cancela cuando quieras.
             </div>
           </div>
         </div>
