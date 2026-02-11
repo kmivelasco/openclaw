@@ -6,7 +6,9 @@ function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
-    throw new Error("Missing Supabase env vars");
+    throw new Error(
+      `Missing Supabase env vars: URL=${url ? "OK" : "MISSING"}, KEY=${key ? "OK" : "MISSING"}`
+    );
   }
   return createClient(url, key);
 }
@@ -15,6 +17,9 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 // Telegram sends updates here when someone messages the bot
 export async function POST(req: NextRequest) {
+  let botToken: string | null = null;
+  let chatId: number | null = null;
+
   try {
     const update = await req.json();
 
@@ -24,24 +29,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const chatId = message.chat.id;
+    chatId = message.chat.id;
     const userText = message.text;
-    const botToken = req.nextUrl.searchParams.get("token");
+    botToken = req.nextUrl.searchParams.get("token");
 
     if (!botToken) {
-      return NextResponse.json({ ok: true }); // Silently ignore
+      console.error("[TG] No bot token in URL query params");
+      return NextResponse.json({ ok: true });
     }
+
+    console.log(`[TG] Message from chat ${chatId}: "${userText.substring(0, 50)}"`);
 
     const supabase = getSupabaseAdmin();
 
     // Find the user who owns this bot token
-    const { data: telegramConfig } = await supabase
+    const { data: telegramConfig, error: tgError } = await supabase
       .from("telegram_config")
       .select("user_id, bot_token")
       .eq("bot_token", botToken)
       .single();
 
+    if (tgError) {
+      console.error("[TG] telegram_config lookup error:", tgError.message, tgError.code);
+    }
+
     if (!telegramConfig) {
+      console.error("[TG] No telegram_config found for this bot token");
       await sendTelegramMessage(
         botToken,
         chatId,
@@ -51,21 +64,31 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = telegramConfig.user_id;
+    console.log(`[TG] Found user: ${userId}`);
 
     // Load agent config for system prompt
-    const { data: agentCfg } = await supabase
+    const { data: agentCfg, error: agentError } = await supabase
       .from("agent_config")
       .select("soul_md, identity_md, agents_md, agent_name, agent_emoji, agent_vibe, bootstrap_done")
       .eq("user_id", userId)
       .single();
 
+    if (agentError) {
+      console.log("[TG] agent_config not found (will use default prompt):", agentError.message);
+    }
+
     // Get the user's API keys (try in priority order)
-    const { data: apiKeys } = await supabase
+    const { data: apiKeys, error: keysError } = await supabase
       .from("api_keys")
       .select("provider, api_key")
       .eq("user_id", userId);
 
+    if (keysError) {
+      console.error("[TG] api_keys lookup error:", keysError.message);
+    }
+
     if (!apiKeys || apiKeys.length === 0) {
+      console.error("[TG] No API keys found for user", userId);
       await sendTelegramMessage(
         botToken,
         chatId,
@@ -93,6 +116,8 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ ok: true });
     }
+
+    console.log(`[TG] Using provider: ${selectedKey.provider}`);
 
     // Send typing action
     await fetch(
@@ -124,15 +149,17 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildSystemPrompt(agentCfg);
 
     // Get AI response
+    console.log(`[TG] Calling ${selectedKey.provider} with ${messages.length} messages...`);
     const aiResponse = await getAIResponse(
       selectedKey.provider,
       selectedKey.api_key,
       messages,
       systemPrompt
     );
+    console.log(`[TG] AI response (first 100 chars): "${aiResponse.substring(0, 100)}"`);
 
     // Save messages to history
-    await supabase.from("chat_messages").insert([
+    const { error: insertError } = await supabase.from("chat_messages").insert([
       {
         user_id: userId,
         role: "user",
@@ -147,12 +174,34 @@ export async function POST(req: NextRequest) {
       },
     ]);
 
+    if (insertError) {
+      console.error("[TG] Failed to save messages:", insertError.message);
+      // Don't fail the response over this
+    }
+
     // Send response to Telegram
-    await sendTelegramMessage(botToken, chatId, aiResponse);
+    console.log(`[TG] Sending response to Telegram chat ${chatId}...`);
+    const sendResult = await sendTelegramMessage(botToken, chatId, aiResponse);
+    console.log(`[TG] Send result:`, sendResult);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Telegram webhook error:", error);
+    console.error("[TG] WEBHOOK ERROR:", (error as Error).message);
+    console.error("[TG] Stack:", (error as Error).stack);
+
+    // Try to notify the user via Telegram about the error
+    if (botToken && chatId) {
+      try {
+        await sendTelegramMessage(
+          botToken,
+          chatId,
+          `Error procesando tu mensaje: ${(error as Error).message?.substring(0, 200) || "Error desconocido"}. Revisa la configuracion en el dashboard.`
+        );
+      } catch {
+        console.error("[TG] Also failed to send error notification to Telegram");
+      }
+    }
+
     return NextResponse.json({ ok: true }); // Always return 200 to Telegram
   }
 }
@@ -161,11 +210,14 @@ async function sendTelegramMessage(
   botToken: string,
   chatId: number,
   text: string
-) {
+): Promise<{ ok: boolean; description?: string }> {
   // Telegram has a 4096 char limit per message
   const chunks = splitMessage(text, 4000);
+  let lastResult = { ok: true, description: "" };
+
   for (const chunk of chunks) {
-    await fetch(
+    // First try with Markdown, fallback to plain text if it fails
+    const res = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
       {
         method: "POST",
@@ -177,7 +229,36 @@ async function sendTelegramMessage(
         }),
       }
     );
+    const data = await res.json();
+
+    // If Markdown parsing fails (common with special chars), retry without parse_mode
+    if (!data.ok && data.description?.includes("parse")) {
+      console.log("[TG] Markdown parse failed, retrying without parse_mode...");
+      const retryRes = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: chunk,
+          }),
+        }
+      );
+      const retryData = await retryRes.json();
+      lastResult = retryData;
+      if (!retryData.ok) {
+        console.error("[TG] sendMessage retry also failed:", retryData.description);
+      }
+    } else if (!data.ok) {
+      console.error("[TG] sendMessage failed:", data.description);
+      lastResult = data;
+    } else {
+      lastResult = data;
+    }
   }
+
+  return lastResult;
 }
 
 function splitMessage(text: string, maxLen: number): string[] {
@@ -243,8 +324,8 @@ async function getAIResponse(
     }
     return "Provider no soportado.";
   } catch (error) {
-    console.error(`AI ${provider} error:`, error);
-    return "Hubo un error procesando tu mensaje. Intenta de nuevo.";
+    console.error(`[TG] AI ${provider} error:`, (error as Error).message);
+    throw error; // Re-throw so the main catch can notify the user
   }
 }
 
@@ -262,13 +343,13 @@ async function callAnthropic(
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 4096,
+      max_tokens: 1024,
       system: systemPrompt,
       messages,
     }),
   });
   const data = await res.json();
-  if (!res.ok) {throw new Error(data.error?.message || "Anthropic error");}
+  if (!res.ok) {throw new Error(`Anthropic ${res.status}: ${data.error?.message || JSON.stringify(data)}`);}
   return data.content?.[0]?.text || "Sin respuesta.";
 }
 
@@ -284,12 +365,12 @@ async function callOpenAI(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
     }),
   });
   const data = await res.json();
-  if (!res.ok) {throw new Error(data.error?.message || "OpenAI error");}
+  if (!res.ok) {throw new Error(`OpenAI ${res.status}: ${data.error?.message || JSON.stringify(data)}`);}
   return data.choices?.[0]?.message?.content || "Sin respuesta.";
 }
 
@@ -315,7 +396,7 @@ async function callGoogle(
     }
   );
   const data = await res.json();
-  if (!res.ok) {throw new Error(data.error?.message || "Google error");}
+  if (!res.ok) {throw new Error(`Google ${res.status}: ${data.error?.message || JSON.stringify(data)}`);}
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta.";
 }
 
@@ -339,6 +420,6 @@ async function callGroq(
     }
   );
   const data = await res.json();
-  if (!res.ok) {throw new Error(data.error?.message || "Groq error");}
+  if (!res.ok) {throw new Error(`Groq ${res.status}: ${data.error?.message || JSON.stringify(data)}`);}
   return data.choices?.[0]?.message?.content || "Sin respuesta.";
 }
