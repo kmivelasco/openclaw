@@ -52,6 +52,13 @@ export async function POST(req: NextRequest) {
 
     const userId = telegramConfig.user_id;
 
+    // Load agent config for system prompt
+    const { data: agentCfg } = await supabase
+      .from("agent_config")
+      .select("soul_md, identity_md, agents_md, agent_name, agent_emoji, agent_vibe, bootstrap_done")
+      .eq("user_id", userId)
+      .single();
+
     // Get the user's API keys (try in priority order)
     const { data: apiKeys } = await supabase
       .from("api_keys")
@@ -113,11 +120,15 @@ export async function POST(req: NextRequest) {
       { role: "user" as const, content: userText },
     ];
 
+    // Build system prompt from agent config
+    const systemPrompt = buildSystemPrompt(agentCfg);
+
     // Get AI response
     const aiResponse = await getAIResponse(
       selectedKey.provider,
       selectedKey.api_key,
-      messages
+      messages,
+      systemPrompt
     );
 
     // Save messages to history
@@ -187,16 +198,39 @@ function splitMessage(text: string, maxLen: number): string[] {
   return chunks;
 }
 
+type AgentCfg = {
+  soul_md?: string;
+  identity_md?: string;
+  agents_md?: string;
+  agent_name?: string;
+  agent_emoji?: string;
+  agent_vibe?: string;
+  bootstrap_done?: boolean;
+} | null;
+
+function buildSystemPrompt(cfg: AgentCfg): string {
+  if (!cfg?.bootstrap_done) {
+    return "Sos un asistente inteligente de OpenClaw. Responde de forma clara y util. Responde en el idioma del usuario.";
+  }
+
+  const parts: string[] = [];
+  if (cfg.agent_name) {parts.push(`Tu nombre es ${cfg.agent_name}.`);}
+  if (cfg.agent_emoji) {parts.push(`Tu emoji es ${cfg.agent_emoji}.`);}
+  if (cfg.agent_vibe) {parts.push(`Tu vibe/personalidad: ${cfg.agent_vibe}.`);}
+  if (cfg.soul_md) {parts.push(`\n## SOUL.md\n${cfg.soul_md}`);}
+  if (cfg.identity_md) {parts.push(`\n## IDENTITY.md\n${cfg.identity_md}`);}
+  if (cfg.agents_md) {parts.push(`\n## AGENTS.md\n${cfg.agents_md}`);}
+  parts.push("\nResponde en el idioma del usuario. Este mensaje llega desde Telegram.");
+
+  return parts.join("\n");
+}
+
 async function getAIResponse(
   provider: string,
   apiKey: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  systemPrompt: string
 ): Promise<string> {
-  const systemPrompt =
-    "Sos un asistente inteligente de OpenClaw, una plataforma de agentes de IA. " +
-    "Responde de forma clara, concisa y util. Si te preguntan en espanol, responde en espanol. " +
-    "Si te preguntan en ingles, responde en ingles.";
-
   try {
     if (provider === "anthropic") {
       return await callAnthropic(apiKey, messages, systemPrompt);

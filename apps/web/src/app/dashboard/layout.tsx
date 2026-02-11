@@ -12,12 +12,14 @@ import {
   Menu,
   X,
   Crown,
+  Brain,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/cn";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Bot },
+  { href: "/dashboard/agent", label: "Mi Agente", icon: Brain },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/telegram", label: "Telegram", icon: Send },
   { href: "/dashboard/settings", label: "API Keys", icon: Settings },
