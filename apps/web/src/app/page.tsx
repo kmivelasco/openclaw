@@ -40,12 +40,16 @@ function PricingCard({
   description,
   features,
   highlighted,
+  ctaLabel,
+  ctaHref,
 }: {
   name: string;
   price: string;
   description: string;
   features: string[];
   highlighted?: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
 }) {
   return (
     <div
@@ -66,7 +70,7 @@ function PricingCard({
       <p className="mb-4 text-sm text-[var(--text-secondary)]">{description}</p>
       <div className="mb-6">
         <span className="text-4xl font-bold gradient-text">{price}</span>
-        {price !== "Gratis" && (
+        {price !== "Gratis" && price !== "Custom" && (
           <span className="text-[var(--text-muted)]">/mes</span>
         )}
       </div>
@@ -79,14 +83,15 @@ function PricingCard({
         ))}
       </ul>
       <Link
-        href="/auth/signup"
+        href={ctaHref || "/auth/signup"}
+        target={ctaHref?.startsWith("http") ? "_blank" : undefined}
         className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all ${
           highlighted
             ? "bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)]"
             : "border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-[var(--border-accent)] hover:bg-[var(--bg-card-hover)]"
         }`}
       >
-        Comenzar ahora
+        {ctaLabel || "Comenzar ahora"}
       </Link>
     </div>
   );
@@ -237,7 +242,7 @@ export default function LandingPage() {
             />
             <PricingCard
               name="Pro"
-              price="$15.000"
+              price="Custom"
               description="Para negocios en crecimiento"
               features={[
                 "Agentes ilimitados",
@@ -250,10 +255,12 @@ export default function LandingPage() {
                 "Soporte prioritario",
               ]}
               highlighted
+              ctaLabel="Contacta a un asesor"
+              ctaHref="https://wa.me/5491100000000"
             />
           </div>
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-            Precios en pesos argentinos (ARS). Pago seguro con Mercado Pago.
+            Empieza gratis. Pago seguro con Mercado Pago.
           </p>
         </div>
       </section>

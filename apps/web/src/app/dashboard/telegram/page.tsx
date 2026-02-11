@@ -632,13 +632,14 @@ export default function TelegramPage() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleSubscribe("pro")}
-                  disabled={subscribing}
+                <a
+                  href="https://wa.me/5491100000000"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="rounded-lg border border-[var(--accent-primary)]/30 px-4 py-2 text-xs font-medium text-[var(--accent-primary)] transition-all hover:bg-[var(--accent-primary)]/10"
                 >
-                  $15.000/mes
-                </button>
+                  Contactar
+                </a>
               </div>
             </div>
 

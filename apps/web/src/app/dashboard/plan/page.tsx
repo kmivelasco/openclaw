@@ -197,10 +197,9 @@ export default function PlanPage() {
             </p>
           </div>
           <div className="mb-6">
-            <span className="text-4xl font-bold gradient-text">$15.000</span>
-            <span className="text-[var(--text-muted)]">/mes</span>
+            <span className="text-4xl font-bold gradient-text">Custom</span>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Pesos argentinos. Facturacion mensual.
+              Precio personalizado segun tus necesidades
             </p>
           </div>
           <ul className="mb-8 space-y-3">
@@ -229,20 +228,15 @@ export default function PlanPage() {
               Plan activo
             </div>
           ) : (
-            <button
-              onClick={() => handleSubscribe("pro")}
-              disabled={subscribing}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)] disabled:opacity-50"
+            <a
+              href="https://wa.me/5491100000000"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)]"
             >
-              {subscribing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  Suscribirse por $15.000/mes
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+              Contacta a un asesor
+              <ArrowRight className="h-4 w-4" />
+            </a>
           )}
         </div>
       </div>
