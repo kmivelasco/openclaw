@@ -17,8 +17,8 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 // Telegram sends updates here when someone messages the bot
 export async function POST(req: NextRequest) {
-  let botToken: string | null = null;
-  let chatId: number | null = null;
+  let botToken = "";
+  let chatId = 0;
 
   try {
     const update = await req.json();
@@ -29,14 +29,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    chatId = message.chat.id;
-    const userText = message.text;
-    botToken = req.nextUrl.searchParams.get("token");
+    chatId = message.chat.id as number;
+    const userText = message.text as string;
+    const tokenParam = req.nextUrl.searchParams.get("token");
 
-    if (!botToken) {
+    if (!tokenParam) {
       console.error("[TG] No bot token in URL query params");
       return NextResponse.json({ ok: true });
     }
+    botToken = tokenParam;
 
     console.log(`[TG] Message from chat ${chatId}: "${userText.substring(0, 50)}"`);
 
@@ -190,7 +191,7 @@ export async function POST(req: NextRequest) {
     console.error("[TG] Stack:", (error as Error).stack);
 
     // Try to notify the user via Telegram about the error
-    if (botToken && chatId) {
+    if (botToken && chatId > 0) {
       try {
         await sendTelegramMessage(
           botToken,
