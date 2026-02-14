@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Crown,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   Zap,
   ArrowRight,
   Shield,
+  Settings,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
@@ -19,13 +21,24 @@ type Subscription = {
 
 export default function PlanPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [managingPortal, setManagingPortal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(false);
 
   useEffect(() => {
     loadSubscription();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("session_id")) {
+      setSuccessMessage(true);
+      loadSubscription();
+      setTimeout(() => setSuccessMessage(false), 5000);
+    }
+  }, [searchParams]);
 
   async function loadSubscription() {
     const {
@@ -45,7 +58,7 @@ export default function PlanPage() {
     setLoading(false);
   }
 
-  async function handleSubscribe(plan: "trial" | "pro") {
+  async function handleSubscribe() {
     setSubscribing(true);
 
     const {
@@ -54,11 +67,10 @@ export default function PlanPage() {
     if (!user) {return;}
 
     try {
-      const res = await fetch("/api/mercadopago", {
+      const res = await fetch("/api/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan,
           payerEmail: user.email,
           externalReference: user.id,
         }),
@@ -66,8 +78,8 @@ export default function PlanPage() {
 
       const data = await res.json();
 
-      if (data.init_point) {
-        window.location.href = data.init_point;
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         alert(data.error || "Error al crear suscripcion");
         setSubscribing(false);
@@ -75,6 +87,35 @@ export default function PlanPage() {
     } catch {
       alert("Error de conexion");
       setSubscribing(false);
+    }
+  }
+
+  async function handleManageSubscription() {
+    setManagingPortal(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {return;}
+
+    try {
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Error al abrir el portal");
+        setManagingPortal(false);
+      }
+    } catch {
+      alert("Error de conexion");
+      setManagingPortal(false);
     }
   }
 
@@ -96,6 +137,16 @@ export default function PlanPage() {
           Gestiona tu suscripcion y accede a todas las funcionalidades.
         </p>
       </div>
+
+      {/* Success message */}
+      {successMessage && (
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[var(--success)]/30 bg-[var(--success)]/10 p-4">
+          <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
+          <p className="text-sm font-medium text-[var(--success)]">
+            Suscripcion activada correctamente. Tu prueba gratis de 7 dias comenzo.
+          </p>
+        </div>
+      )}
 
       {/* Current plan banner */}
       <div
@@ -169,7 +220,7 @@ export default function PlanPage() {
           </ul>
           {!isPro && (
             <button
-              onClick={() => handleSubscribe("trial")}
+              onClick={handleSubscribe}
               disabled={subscribing}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-primary)] py-3 text-sm font-semibold text-[var(--text-primary)] transition-all hover:border-[var(--border-accent)] hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
             >
@@ -197,9 +248,10 @@ export default function PlanPage() {
             </p>
           </div>
           <div className="mb-6">
-            <span className="text-4xl font-bold gradient-text">Custom</span>
+            <span className="text-4xl font-bold gradient-text">$20 USD</span>
+            <span className="text-[var(--text-muted)]">/mes</span>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Precio personalizado segun tus necesidades
+              Despues de 7 dias de prueba gratis
             </p>
           </div>
           <ul className="mb-8 space-y-3">
@@ -223,20 +275,41 @@ export default function PlanPage() {
             ))}
           </ul>
           {isPro ? (
-            <div className="flex items-center justify-center gap-2 rounded-xl bg-[var(--success)]/10 py-3 text-sm font-semibold text-[var(--success)]">
-              <CheckCircle2 className="h-4 w-4" />
-              Plan activo
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-center gap-2 rounded-xl bg-[var(--success)]/10 py-3 text-sm font-semibold text-[var(--success)]">
+                <CheckCircle2 className="h-4 w-4" />
+                Plan activo
+              </div>
+              <button
+                onClick={handleManageSubscription}
+                disabled={managingPortal}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-primary)] py-3 text-sm font-medium text-[var(--text-secondary)] transition-all hover:border-[var(--border-accent)] hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
+              >
+                {managingPortal ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Settings className="h-4 w-4" />
+                    Gestionar suscripcion
+                  </>
+                )}
+              </button>
             </div>
           ) : (
-            <a
-              href="https://wa.me/5491100000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)]"
+            <button
+              onClick={handleSubscribe}
+              disabled={subscribing}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)] disabled:opacity-50"
             >
-              Contacta a un asesor
-              <ArrowRight className="h-4 w-4" />
-            </a>
+              {subscribing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Empezar prueba gratis
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -246,10 +319,10 @@ export default function PlanPage() {
         <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-primary)]" />
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">
-            Pago seguro con Mercado Pago
+            Pago seguro con Stripe
           </p>
           <p className="text-xs text-[var(--text-muted)]">
-            Tus datos de pago son procesados directamente por Mercado Pago. Nunca
+            Tus datos de pago son procesados directamente por Stripe. Nunca
             almacenamos tu informacion financiera. Podes cancelar en cualquier
             momento.
           </p>

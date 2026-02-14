@@ -30,6 +30,11 @@ create table if not exists public.subscriptions (
   user_id uuid references auth.users(id) on delete cascade not null unique,
   plan text default 'starter' check (plan in ('starter', 'pro', 'enterprise')),
   status text default 'active' check (status in ('active', 'canceled', 'past_due')),
+  mp_subscription_id text,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  trial_ends_at timestamptz,
+  current_period_end timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

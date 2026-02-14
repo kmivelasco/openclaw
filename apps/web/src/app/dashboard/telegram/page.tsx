@@ -232,7 +232,7 @@ export default function TelegramPage() {
     }
   }
 
-  async function handleSubscribe(plan: "trial" | "pro") {
+  async function handleSubscribe() {
     setSubscribing(true);
 
     const {
@@ -241,11 +241,10 @@ export default function TelegramPage() {
     if (!user) {return;}
 
     try {
-      const res = await fetch("/api/mercadopago", {
+      const res = await fetch("/api/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan,
           payerEmail: user.email,
           externalReference: user.id,
         }),
@@ -253,8 +252,8 @@ export default function TelegramPage() {
 
       const data = await res.json();
 
-      if (data.init_point) {
-        window.location.href = data.init_point;
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         alert(data.error || "Error al crear suscripcion");
         setSubscribing(false);
@@ -581,7 +580,7 @@ export default function TelegramPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold gradient-text">Gratis</span>
-                  <p className="text-xs text-[var(--text-muted)]">por 7 dias</p>
+                  <p className="text-xs text-[var(--text-muted)]">7 dias, luego $20 USD/mes</p>
                 </div>
               </div>
 
@@ -604,7 +603,7 @@ export default function TelegramPage() {
               </ul>
 
               <button
-                onClick={() => handleSubscribe("trial")}
+                onClick={handleSubscribe}
                 disabled={subscribing}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-3.5 text-sm font-semibold text-white transition-all hover:bg-[var(--accent-secondary)] hover:shadow-lg hover:shadow-[var(--accent-glow)] disabled:opacity-50"
               >
@@ -633,12 +632,10 @@ export default function TelegramPage() {
                   </div>
                 </div>
                 <a
-                  href="https://wa.me/5491100000000"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/dashboard/plan"
                   className="rounded-lg border border-[var(--accent-primary)]/30 px-4 py-2 text-xs font-medium text-[var(--accent-primary)] transition-all hover:bg-[var(--accent-primary)]/10"
                 >
-                  Contactar
+                  Ver planes
                 </a>
               </div>
             </div>
@@ -646,7 +643,7 @@ export default function TelegramPage() {
             {/* Security note */}
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
               <Shield className="h-3.5 w-3.5" />
-              Pago seguro con Mercado Pago. Cancela cuando quieras.
+              Pago seguro con Stripe. Cancela cuando quieras.
             </div>
           </div>
         </div>

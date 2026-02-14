@@ -70,7 +70,7 @@ function PricingCard({
       <p className="mb-4 text-sm text-[var(--text-secondary)]">{description}</p>
       <div className="mb-6">
         <span className="text-4xl font-bold gradient-text">{price}</span>
-        {price !== "Gratis" && price !== "Custom" && (
+        {price !== "Gratis" && (
           <span className="text-[var(--text-muted)]">/mes</span>
         )}
       </div>
@@ -242,8 +242,8 @@ export default function LandingPage() {
             />
             <PricingCard
               name="Pro"
-              price="Custom"
-              description="Para negocios en crecimiento"
+              price="$20 USD"
+              description="7 dias gratis, luego $20 USD/mes"
               features={[
                 "Agentes ilimitados",
                 "Canales ilimitados",
@@ -255,12 +255,11 @@ export default function LandingPage() {
                 "Soporte prioritario",
               ]}
               highlighted
-              ctaLabel="Contacta a un asesor"
-              ctaHref="https://wa.me/5491100000000"
+              ctaLabel="Empezar 7 dias gratis"
             />
           </div>
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-            Empieza gratis. Pago seguro con Mercado Pago.
+            Empieza gratis. Pago seguro con Stripe.
           </p>
         </div>
       </section>
