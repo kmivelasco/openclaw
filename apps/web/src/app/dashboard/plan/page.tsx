@@ -10,7 +10,7 @@ import {
   Zap,
   ArrowRight,
   Shield,
-  Settings,
+  XCircle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
@@ -25,7 +25,7 @@ export default function PlanPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
-  const [managingPortal, setManagingPortal] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function PlanPage() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("session_id")) {
+    if (searchParams.get("status") === "approved") {
       setSuccessMessage(true);
       loadSubscription();
       setTimeout(() => setSuccessMessage(false), 5000);
@@ -67,7 +67,7 @@ export default function PlanPage() {
     if (!user) {return;}
 
     try {
-      const res = await fetch("/api/stripe", {
+      const res = await fetch("/api/rebill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,8 +90,10 @@ export default function PlanPage() {
     }
   }
 
-  async function handleManageSubscription() {
-    setManagingPortal(true);
+  async function handleCancelSubscription() {
+    if (!confirm("Estas seguro de que queres cancelar tu suscripcion?")) {return;}
+
+    setCanceling(true);
 
     const {
       data: { user },
@@ -99,23 +101,25 @@ export default function PlanPage() {
     if (!user) {return;}
 
     try {
-      const res = await fetch("/api/stripe/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      // Update subscription status in Supabase directly
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          plan: "starter",
+          status: "canceled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
 
-      const data = await res.json();
-
-      if (data.url) {
-        window.location.href = data.url;
+      if (error) {
+        alert("Error al cancelar la suscripcion");
       } else {
-        alert(data.error || "Error al abrir el portal");
-        setManagingPortal(false);
+        await loadSubscription();
       }
     } catch {
       alert("Error de conexion");
-      setManagingPortal(false);
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -281,16 +285,16 @@ export default function PlanPage() {
                 Plan activo
               </div>
               <button
-                onClick={handleManageSubscription}
-                disabled={managingPortal}
+                onClick={handleCancelSubscription}
+                disabled={canceling}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-primary)] py-3 text-sm font-medium text-[var(--text-secondary)] transition-all hover:border-[var(--border-accent)] hover:bg-[var(--bg-card-hover)] disabled:opacity-50"
               >
-                {managingPortal ? (
+                {canceling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Settings className="h-4 w-4" />
-                    Gestionar suscripcion
+                    <XCircle className="h-4 w-4" />
+                    Cancelar suscripcion
                   </>
                 )}
               </button>
@@ -319,10 +323,10 @@ export default function PlanPage() {
         <Shield className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-primary)]" />
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">
-            Pago seguro con Stripe
+            Pago seguro
           </p>
           <p className="text-xs text-[var(--text-muted)]">
-            Tus datos de pago son procesados directamente por Stripe. Nunca
+            Tus datos de pago son procesados de forma segura. Nunca
             almacenamos tu informacion financiera. Podes cancelar en cualquier
             momento.
           </p>

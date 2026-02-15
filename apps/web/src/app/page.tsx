@@ -259,7 +259,7 @@ export default function LandingPage() {
             />
           </div>
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-            Empieza gratis. Pago seguro con Stripe.
+            Empieza gratis. Pago seguro.
           </p>
         </div>
       </section>

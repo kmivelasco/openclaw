@@ -241,7 +241,7 @@ export default function TelegramPage() {
     if (!user) {return;}
 
     try {
-      const res = await fetch("/api/stripe", {
+      const res = await fetch("/api/rebill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -643,7 +643,7 @@ export default function TelegramPage() {
             {/* Security note */}
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
               <Shield className="h-3.5 w-3.5" />
-              Pago seguro con Stripe. Cancela cuando quieras.
+              Pago seguro. Cancela cuando quieras.
             </div>
           </div>
         </div>
