@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
         },
         paymentMethods: [
           {
-            methods: ["card", "bank_transfer"],
-            currency: "USD",
+            methods: ["card"],
+            currency: "ARS",
           },
         ],
         redirectUrls: {
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       const errorBody = await res.text();
       console.error("[Rebill] API error:", res.status, errorBody);
       return NextResponse.json(
-        { error: "Error al crear link de pago" },
+        { error: `Rebill API error: ${res.status} - ${errorBody}` },
         { status: 500 },
       );
     }
