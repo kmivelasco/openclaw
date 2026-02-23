@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bot, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  const verificationError = searchParams.get("error") === "verification_failed";
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +51,11 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
+          {verificationError && (
+            <div className="rounded-lg border border-[var(--warning)] bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--warning)]">
+              El link de verificacion expiro o ya fue usado. Intenta iniciar sesion o registrarte de nuevo.
+            </div>
+          )}
           {error && (
             <div className="rounded-lg border border-[var(--error)] bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)]">
               {error}
@@ -116,5 +123,19 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--accent-primary)]" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

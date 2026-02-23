@@ -7,7 +7,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      // If token exchange fails, redirect to login with error
+      return NextResponse.redirect(`${origin}/auth/login?error=verification_failed`);
+    }
   }
 
   return NextResponse.redirect(`${origin}/dashboard`);

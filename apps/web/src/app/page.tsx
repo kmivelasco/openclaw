@@ -34,68 +34,6 @@ function FeatureCard({
   );
 }
 
-function PricingCard({
-  name,
-  price,
-  description,
-  features,
-  highlighted,
-  ctaLabel,
-  ctaHref,
-}: {
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-  highlighted?: boolean;
-  ctaLabel?: string;
-  ctaHref?: string;
-}) {
-  return (
-    <div
-      className={`relative rounded-2xl border p-8 ${
-        highlighted
-          ? "glow-border border-[var(--border-accent)] bg-[var(--bg-card-hover)]"
-          : "border-[var(--border-primary)] bg-[var(--bg-card)]"
-      }`}
-    >
-      {highlighted && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent-primary)] px-4 py-1 text-xs font-medium text-white">
-          Popular
-        </div>
-      )}
-      <h3 className="mb-1 text-xl font-bold text-[var(--text-primary)]">
-        {name}
-      </h3>
-      <p className="mb-4 text-sm text-[var(--text-secondary)]">{description}</p>
-      <div className="mb-6">
-        <span className="text-4xl font-bold gradient-text">{price}</span>
-        {price !== "Gratis" && (
-          <span className="text-[var(--text-muted)]">/mes</span>
-        )}
-      </div>
-      <ul className="mb-8 space-y-3">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
-            {f}
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={ctaHref || "/auth/signup"}
-        target={ctaHref?.startsWith("http") ? "_blank" : undefined}
-        className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all ${
-          highlighted
-            ? "bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)]"
-            : "border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-[var(--border-accent)] hover:bg-[var(--bg-card-hover)]"
-        }`}
-      >
-        {ctaLabel || "Comenzar ahora"}
-      </Link>
-    </div>
-  );
-}
 
 export default function LandingPage() {
   return (
@@ -114,7 +52,7 @@ export default function LandingPage() {
               Features
             </a>
             <a href="#pricing" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-              Precios
+              Empezar
             </a>
             <Link
               href="/auth/login"
@@ -220,47 +158,48 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-              Planes <span className="gradient-text">simples</span>
+              Empieza <span className="gradient-text">gratis</span>
             </h2>
-            <p className="text-[var(--text-secondary)]">
-              Empieza gratis. Escala cuando lo necesites.
+            <p className="mx-auto max-w-2xl text-[var(--text-secondary)]">
+              Proba la plataforma completa durante 7 dias sin costo.
+              Despues elegis el plan que se adapte a tu negocio.
             </p>
           </div>
-          <div className="mx-auto grid max-w-3xl gap-8 md:grid-cols-2">
-            <PricingCard
-              name="Freemium"
-              price="Gratis"
-              description="7 dias de prueba con todo incluido"
-              features={[
-                "7 dias gratis con funciones Pro",
-                "1 agente activo",
-                "1 canal (Telegram o WhatsApp)",
-                "100 mensajes/dia",
-                "Trae tu propia API key",
-                "Chat web incluido",
-              ]}
-            />
-            <PricingCard
-              name="Pro"
-              price="$20 USD"
-              description="7 dias gratis, luego $20 USD/mes"
-              features={[
+          <div className="mx-auto max-w-2xl rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-8 md:p-12">
+            <div className="mb-8 text-center">
+              <div className="mb-4 inline-flex rounded-xl bg-[var(--accent-glow)] p-3">
+                <Sparkles className="h-6 w-6 text-[var(--accent-primary)]" />
+              </div>
+              <h3 className="mb-2 text-2xl font-bold">7 dias gratis con todo incluido</h3>
+              <p className="text-[var(--text-secondary)]">
+                Acceso completo a todas las funcionalidades Pro. Sin tarjeta de credito.
+              </p>
+            </div>
+            <div className="mb-8 grid gap-3 sm:grid-cols-2">
+              {[
                 "Agentes ilimitados",
                 "Canales ilimitados",
                 "Mensajes ilimitados",
-                "Cron jobs y webhooks",
                 "Memory & RAG",
+                "Cron jobs y webhooks",
                 "Browser automation",
                 "Custom skills",
                 "Soporte prioritario",
-              ]}
-              highlighted
-              ctaLabel="Empezar 7 dias gratis"
-            />
+              ].map((f) => (
+                <div key={f} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                  <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-primary)]" />
+                  {f}
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/auth/signup"
+              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent-primary)] py-4 text-lg font-semibold text-white transition-all hover:bg-[var(--accent-secondary)]"
+            >
+              Crear cuenta gratis
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
-          <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-            Empieza gratis. Pago seguro.
-          </p>
         </div>
       </section>
 

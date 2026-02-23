@@ -580,7 +580,7 @@ export default function TelegramPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold gradient-text">Gratis</span>
-                  <p className="text-xs text-[var(--text-muted)]">7 dias, luego $20 USD/mes</p>
+                  <p className="text-xs text-[var(--text-muted)]">7 dias de prueba gratis</p>
                 </div>
               </div>
 

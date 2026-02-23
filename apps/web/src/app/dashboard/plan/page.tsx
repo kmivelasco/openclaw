@@ -252,10 +252,9 @@ export default function PlanPage() {
             </p>
           </div>
           <div className="mb-6">
-            <span className="text-4xl font-bold gradient-text">$20.000 ARS</span>
-            <span className="text-[var(--text-muted)]">/mes</span>
+            <span className="text-4xl font-bold gradient-text">Pro</span>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Despues de 7 dias de prueba gratis
+              7 dias de prueba gratis incluidos
             </p>
           </div>
           <ul className="mb-8 space-y-3">
